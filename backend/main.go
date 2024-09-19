@@ -7,11 +7,17 @@ import (
 
 	gHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"github.com/leoldding/user-manage/database"
 	"github.com/leoldding/user-manage/handlers"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	router := mux.NewRouter()
 	router.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("pong"))
@@ -27,7 +33,7 @@ func main() {
 	handlers.RegisterHandlers(router)
 
 	headersOk := gHandlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
-	originsOk := gHandlers.AllowedOrigins([]string{"localhost:3000"})
+	originsOk := gHandlers.AllowedOrigins([]string{""})
 	methodsOk := gHandlers.AllowedMethods([]string{"GET", "POST", "DELETE", "PATCH"})
 	credentialsOk := gHandlers.AllowCredentials()
 

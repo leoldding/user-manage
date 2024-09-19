@@ -12,19 +12,19 @@ func RegisterHandlers(router *mux.Router) {
 
 	// auth endpoints
 	// login, consider using this as verify as well
-	router.HandleFunc("/api/login", login).Methods("POST")
+	router.HandleFunc("/login", login).Methods("POST")
 	// logout
-	router.HandleFunc("/api/logout", logout).Methods("POST")
+	router.HandleFunc("/logout", logout).Methods("POST")
 
 	// user endpoints
 	// create user
-	router.HandleFunc("/api/user", createUser).Methods("POST")
+	router.HandleFunc("/user", createUser).Methods("POST")
 	// get user
-	router.Handle("/api/user", authorize(http.HandlerFunc(getUser))).Methods("GET")
+	router.Handle("/user", authorize(http.HandlerFunc(getUser))).Methods("GET")
 	// updated user
-	router.Handle("/api/user", authorize(http.HandlerFunc(updateUser))).Methods("PATCH")
+	router.Handle("/user", authorize(http.HandlerFunc(updateUser))).Methods("PATCH")
 	// delete user
-	router.Handle("/api/user", authorize(http.HandlerFunc(deleteUser))).Methods("DELETE")
+	router.Handle("/user", authorize(http.HandlerFunc(deleteUser))).Methods("DELETE")
 }
 
 func authorize(next http.Handler) http.Handler {

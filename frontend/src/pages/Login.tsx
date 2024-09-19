@@ -21,6 +21,8 @@ const Login: React.FC = () => {
 
     const handleLogin = (event: React.MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
+        const response = fetch("/ping")
+        console.log(response)
         navigate("/u/" + credentials.Username);
     }
 
