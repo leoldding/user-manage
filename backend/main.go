@@ -30,7 +30,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	handlers.RegisterHandlers(router)
+	handlers.RegisterHandlers(router, pool, ctx)
 
 	headersOk := gHandlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
 	originsOk := gHandlers.AllowedOrigins([]string{""})
