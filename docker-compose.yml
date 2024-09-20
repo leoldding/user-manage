@@ -8,10 +8,13 @@ services:
       - ./backend:/app
     healthcheck: 
       test: curl --fail http://localhost:8080/ping || exit 1
-      interval: 10s
+      interval: 5s
       timeout: 2s
       retries: 3
       start_period: 5s
+    depends_on:
+      postgres:
+        condition: service_healthy
   frontend:
     restart: always
     build:
@@ -33,4 +36,17 @@ services:
     depends_on: 
       backend:
         condition: service_healthy
-  ## add postgres service
+  postgres:
+    restart: always
+    image: postgres
+    environment:
+      - POSTGRES_DB=user_manage
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    healthcheck: 
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 2s
+      retries: 3
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
