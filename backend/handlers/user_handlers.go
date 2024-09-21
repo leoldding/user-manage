@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/leoldding/user-manage/database"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func (db *DB) createUser(w http.ResponseWriter, r *http.Request) {
@@ -18,6 +19,13 @@ func (db *DB) createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hashedPass, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), 8)
+	if err != nil {
+		log.Printf("Error hashing user password: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	conn, err := db.Pool.Acquire(db.Ctx)
 	if err != nil {
 		log.Printf("Error acquiring connection from pool: %v", err)
@@ -26,14 +34,34 @@ func (db *DB) createUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Release()
 
-	_, err = conn.Exec(db.Ctx, "INSERT INTO users (username, password, first_name, last_name) VALUES ($1, $2, $3, $4);", newUser.Username, newUser.Password, newUser.FirstName, newUser.LastName)
+	tx, err := conn.Begin(db.Ctx)
 	if err != nil {
-		log.Printf("Error inserting user into database: %v", err)
+		log.Printf("Error beginning database transaction: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(db.Ctx)
+
+	_, err = tx.Exec(db.Ctx, "INSERT INTO users (username, password, first_name, last_name) VALUES ($1, $2, $3, $4);", newUser.Username, hashedPass, newUser.FirstName, newUser.LastName)
+	if err != nil {
+		log.Printf("Error inserting users table: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// RETRIEVE NEW USERS ID AND CREATE USER ROLES
+	_, err = tx.Exec(db.Ctx, "INSERT INTO user_roles (user_id, role_id) VALUES ((SELECT id FROM users WHERE username = $1), 2);", newUser.Username)
+	if err != nil {
+		log.Printf("Error inserting into user_roles table: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = tx.Commit(db.Ctx)
+	if err != nil {
+		log.Printf("Error commiting transaction: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusCreated)
 }
@@ -119,16 +147,31 @@ func (db *DB) deleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Release()
 
-	_, err = conn.Exec(db.Ctx, "DELETE FROM user_roles WHERE user_id = $1;", deleteUser.Id)
+	tx, err := conn.Begin(db.Ctx)
+	if err != nil {
+		log.Printf("Error beginning database transaction: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(db.Ctx)
+
+	_, err = tx.Exec(db.Ctx, "DELETE FROM user_roles WHERE user_id = $1;", deleteUser.Id)
 	if err != nil {
 		log.Printf("Error deleting user: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	_, err = conn.Exec(db.Ctx, "DELETE FROM users WHERE id = $1;", deleteUser.Id)
+	_, err = tx.Exec(db.Ctx, "DELETE FROM users WHERE id = $1;", deleteUser.Id)
 	if err != nil {
 		log.Printf("Error deleting user: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = tx.Commit(db.Ctx)
+	if err != nil {
+		log.Printf("Error commiting transaction: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

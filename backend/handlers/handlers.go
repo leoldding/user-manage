@@ -21,9 +21,9 @@ func RegisterHandlers(router *mux.Router, pool *pgxpool.Pool, ctx context.Contex
 
 	// auth endpoints
 	// login, consider using this as verify as well
-	router.HandleFunc("/login", login).Methods("POST")
+	router.HandleFunc("/login", db.login).Methods("POST")
 	// logout
-	router.HandleFunc("/logout", logout).Methods("POST")
+	router.HandleFunc("/logout", db.logout).Methods("POST")
 
 	// user endpoints
 	// create user
