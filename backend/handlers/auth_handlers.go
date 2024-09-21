@@ -13,6 +13,7 @@ import (
 func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 	log.Println("User Logging In")
 
+	// decode request body into user
 	var creds *database.User
 	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 		log.Printf("Error decoding JSON body: %v", err)
@@ -20,6 +21,7 @@ func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// get database connection from pool
 	conn, err := db.Pool.Acquire(db.Ctx)
 	if err != nil {
 		log.Printf("Error acquiring connection from pool: %v", err)
@@ -28,8 +30,8 @@ func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Release()
 
+	// retrieve stored password from database
 	var storedPass []byte
-
 	err = conn.QueryRow(db.Ctx, "SELECT password FROM users WHERE username = $1;", creds.Username).Scan(&storedPass)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -42,6 +44,7 @@ func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// compare stored password hash and submitted password
 	err = bcrypt.CompareHashAndPassword(storedPass, []byte(creds.Password))
 	if err != nil {
 		log.Printf("Incorrect password for user: %v", err)
@@ -49,7 +52,7 @@ func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// create jwt token here
+	// TODO: create jwt token here
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -57,5 +60,5 @@ func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 func (db *DB) logout(w http.ResponseWriter, r *http.Request) {
 	log.Println("User Logging Out")
 
-	// invalidate jwt token here
+	// TODO: invalidate jwt token here
 }
