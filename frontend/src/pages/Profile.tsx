@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { Logout as LogoutAPI } from "../api/Authentication";
 
 const Profile: React.FC = () => {
     const navigate = useNavigate();
@@ -7,6 +8,9 @@ const Profile: React.FC = () => {
 
     const handleLogout = (event: React.MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
+    
+        LogoutAPI();
+
         navigate("/");
     }
 

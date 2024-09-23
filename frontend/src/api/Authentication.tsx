@@ -1,4 +1,4 @@
-export async function Login(username: string, password: string): Promise<boolean> {
+export async function Login(username: string, password: string): Promise<string> {
     try {
         const response = await fetch("/api/login", {
             method: "POST",
@@ -11,13 +11,14 @@ export async function Login(username: string, password: string): Promise<boolean
         if (!response.ok) {
             throw new Error("Unable to login");
         }
-        return true;
+        const role: string = await response.text();
+        return role;
     } catch (error) {
-        return false;
+        return "";
     }
 }
 
-export async function logout(): Promise<boolean> {
+export async function Logout(): Promise<boolean> {
     try {
         const response = await fetch("/api/logout", {
             method: "GET",

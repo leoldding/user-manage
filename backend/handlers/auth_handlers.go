@@ -91,7 +91,7 @@ func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 	})
 
-	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(role))
 }
 
 func (db *DB) logout(w http.ResponseWriter, r *http.Request) {

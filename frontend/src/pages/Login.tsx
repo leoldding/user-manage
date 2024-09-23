@@ -23,11 +23,13 @@ const Login: React.FC = () => {
     const handleLogin = async (event: React.MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
 
-        const loggedIn = await LoginAPI(credentials.Username, credentials.Password);
-        if (!loggedIn) {
+        const role = await LoginAPI(credentials.Username, credentials.Password);
+        // TODO: route to diff page based on role
+        if (role == "") {
             return;
+        } else {
+            console.log(role);
         }
-
         navigate("/u/" + credentials.Username);
     }
 
