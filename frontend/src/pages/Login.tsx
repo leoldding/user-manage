@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Login as LoginAPI } from "../api/Authentication";
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
@@ -19,10 +20,14 @@ const Login: React.FC = () => {
         return isUsernameValid && isPasswordValid;
     }
 
-    const handleLogin = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const handleLogin = async (event: React.MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
-        const response = fetch("/ping")
-        console.log(response)
+
+        const loggedIn = await LoginAPI(credentials.Username, credentials.Password);
+        if (!loggedIn) {
+            return;
+        }
+
         navigate("/u/" + credentials.Username);
     }
 
