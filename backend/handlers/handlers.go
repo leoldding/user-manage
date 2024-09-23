@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -40,7 +43,46 @@ func authorize(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// check if user is authorized
 		log.Println("Checking if request is authorized.")
-		// return if not authorized
+
+		// retrieve jwt
+		cookie, err := r.Cookie("user-jwt")
+		if err != nil {
+			if err == http.ErrNoCookie {
+				log.Printf("Missing JWT: %v", err)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+			} else {
+				log.Printf("Invalid JWT: %v", err)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+			}
+			return
+		}
+
+		// parse token
+		token, err := jwt.Parse(cookie.Value, func(token *jwt.Token) (interface{}, error) {
+			_, ok := token.Method.(*jwt.SigningMethodHMAC)
+			if !ok {
+				log.Printf("Incorrect JWT signing method: %v", err)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return nil, errors.New("Incorrect signing method")
+			}
+			return os.Getenv("JWT_SECRET"), nil
+		})
+
+		if err != nil {
+			log.Printf("Error parsing JWT: %v", err)
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// invalid token
+		if !token.Valid {
+			log.Printf("Invalid JWT: %v", err)
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// TODO: get claims and check if username matches request body or role is admin
+
 		next.ServeHTTP(w, r)
 	})
 }

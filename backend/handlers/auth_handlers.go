@@ -1,11 +1,14 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"time"
 
+	"github.com/golang-jwt/jwt"
+	"github.com/jackc/pgx/v5"
 	"github.com/leoldding/user-manage/database"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -34,7 +37,7 @@ func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 	var storedPass []byte
 	err = conn.QueryRow(db.Ctx, "SELECT password FROM users WHERE username = $1;", creds.Username).Scan(&storedPass)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			log.Printf("User does not exist: %v", err)
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 		} else {
@@ -52,7 +55,41 @@ func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: create jwt token here
+	// retrieve role of user
+	var role string
+	err = conn.QueryRow(db.Ctx, "SELECT name FROM roles WHERE id = (SELECT role_id FROM user_roles WHERE user_id = (SELECT id FROM users WHERE username = $1));", creds.Username).Scan(&role)
+	if err != nil {
+		log.Printf("Error getting user's role from database: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// create jwt claims
+	claims := jwt.MapClaims{
+		"user": creds.Username,
+		"role": role,
+	}
+
+	// generate token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		log.Printf("Error signing JWT: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// set jwt int http only cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "user-jwt",
+		Value:    tokenString,
+		Expires:  time.Now().Add(30 * time.Minute),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	})
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -60,5 +97,16 @@ func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 func (db *DB) logout(w http.ResponseWriter, r *http.Request) {
 	log.Println("User Logging Out")
 
-	// TODO: invalidate jwt token here
+	// invalidate jwt token
+	http.SetCookie(w, &http.Cookie{
+		Name:     "user-jwt",
+		Value:    "",
+		Expires:  time.Now().Add(-time.Hour),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	})
+
+	w.WriteHeader(http.StatusOK)
 }
