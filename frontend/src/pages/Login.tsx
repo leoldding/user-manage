@@ -24,13 +24,13 @@ const Login: React.FC = () => {
         event.preventDefault();
 
         const role = await LoginAPI(credentials.Username, credentials.Password);
-        // TODO: route to diff page based on role
-        if (role == "") {
+        if (role === "") {
             return;
+        } else if (role === "user") {
+            navigate("/u/" + credentials.Username);
         } else {
-            console.log(role);
-        }
-        navigate("/u/" + credentials.Username);
+            navigate("/a/" + credentials.Username);
+        } 
     }
 
     return (

@@ -1,7 +1,8 @@
 import React from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom"; 
 import Login from "./pages/Login";
-import Profile from "./pages/Profile";
+import UserProfile from "./pages/UserProfile";
+import AdminProfile from "./pages/AdminProfile";
 import NotFound from "./pages/NotFound";
 
 const App: React.FC = () => {
@@ -10,7 +11,8 @@ const App: React.FC = () => {
             <Router>
                 <Routes>
                     <Route path="/" element={<Login />} />
-                    <Route path="/u/:username" element={<Profile />} />
+                    <Route path="/u/:username" element={<UserProfile />} />
+                    <Route path="a/:username" element={<AdminProfile />} />
                     <Route path="/404" element={<NotFound />} />
                     <Route path="*" element={<Navigate to="/404" />} />
                 </Routes>

@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Logout as LogoutAPI } from "../api/Authentication";
 
-const Profile: React.FC = () => {
+const UserProfile: React.FC = () => {
     const navigate = useNavigate();
     const { username } = useParams();
 
@@ -16,13 +16,11 @@ const Profile: React.FC = () => {
 
     return (
         <>
-            <h1>profile</h1>
+            <h1>admin profile</h1>
             <p>Username: { username }</p>
-            <p>Name:</p>
-            <p>Role:</p>
             <button type="button" onClick={handleLogout}>logout</button>
         </>
     )
 }
 
-export default Profile;
+export default UserProfile;
