@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/leoldding/user-manage/database"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -78,6 +79,9 @@ func (db *DB) createUser(w http.ResponseWriter, r *http.Request) {
 func (db *DB) getUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("Getting User")
 
+	claims := r.Context().Value("userClaims").(jwt.MapClaims)
+	id := claims["id"]
+
 	// get database connection from pool
 	conn, err := db.Pool.Acquire(db.Ctx)
 	if err != nil {
@@ -87,34 +91,25 @@ func (db *DB) getUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Release()
 
-	// retrieve all users from database
-	rows, err := conn.Query(db.Ctx, "SELECT id, username, first_name, last_name FROM users;")
+	// retrieve user information from database
+	var user *database.User
+
+	err = conn.QueryRow(db.Ctx, "SELECT username, first_name, last_name FROM users WHERE id = $1;", id).Scan(&user)
 	if err != nil {
-		log.Printf("Error retrieving users from database: %v", err)
+		log.Printf("Error retrieving user from database: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
-
-	// scan values into slice
-	var users []*database.User
-	for rows.Next() {
-		var user database.User
-		err := rows.Scan(&user.Id, &user.Username, &user.FirstName, &user.LastName)
-		if err != nil {
-			log.Printf("Error marshaling database values into variables: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		users = append(users, &user)
-	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(users)
+	json.NewEncoder(w).Encode(user)
 }
 
 func (db *DB) updateUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("Updating User")
+
+	claims := r.Context().Value("userClaims").(jwt.MapClaims)
+	id := claims["id"]
 
 	// decode request body into user
 	var updateUser *database.User
@@ -134,7 +129,7 @@ func (db *DB) updateUser(w http.ResponseWriter, r *http.Request) {
 	defer conn.Release()
 
 	// update user values
-	_, err = conn.Exec(db.Ctx, "UPDATE users SET username = $2, password = $3, first_name = $4, last_name = $5 WHERE id = $1;", updateUser.Id, updateUser.Username, updateUser.Password, updateUser.FirstName, updateUser.LastName)
+	_, err = conn.Exec(db.Ctx, "UPDATE users SET username = $2, password = $3, first_name = $4, last_name = $5 WHERE id = $1;", id, updateUser.Username, updateUser.Password, updateUser.FirstName, updateUser.LastName)
 	if err != nil {
 		log.Printf("Error updating user values: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -146,6 +141,9 @@ func (db *DB) updateUser(w http.ResponseWriter, r *http.Request) {
 
 func (db *DB) deleteUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("Deleting User")
+
+	claims := r.Context().Value("userClaims").(jwt.MapClaims)
+	id := claims["id"]
 
 	// decode request body into user
 	var deleteUser *database.User
@@ -174,7 +172,7 @@ func (db *DB) deleteUser(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(db.Ctx)
 
 	// delete data from user_roles table
-	_, err = tx.Exec(db.Ctx, "DELETE FROM user_roles WHERE user_id = $1;", deleteUser.Id)
+	_, err = tx.Exec(db.Ctx, "DELETE FROM user_roles WHERE user_id = $1;", id)
 	if err != nil {
 		log.Printf("Error deleting user: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -182,7 +180,7 @@ func (db *DB) deleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// delete data from users table
-	_, err = tx.Exec(db.Ctx, "DELETE FROM users WHERE id = $1;", deleteUser.Id)
+	_, err = tx.Exec(db.Ctx, "DELETE FROM users WHERE id = $1;", id)
 	if err != nil {
 		log.Printf("Error deleting user: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

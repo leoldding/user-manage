@@ -32,3 +32,18 @@ export async function Logout(): Promise<boolean> {
         return false;
     }
 }
+
+export async function IsAuthenticated(): Promise<boolean> {
+    try {
+        const response = await fetch("/api/auth", {
+            method: "GET",
+            credentials: "include",
+        });
+        if (!response.ok) {
+            throw new Error("Unable to authenticate user");
+        }
+        return true;
+    } catch (error) {
+        return false;
+    }
+}

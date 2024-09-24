@@ -1,10 +1,24 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Logout as LogoutAPI } from "../api/Authentication";
+import { IsAuthenticated, Logout as LogoutAPI } from "../api/Authentication";
 
 const UserProfile: React.FC = () => {
     const navigate = useNavigate();
     const { username } = useParams();
+
+    useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                const isAuth = await IsAuthenticated();
+                if (!isAuth) {
+                    navigate("/");
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        };
+        checkAuth();
+    }, []);
 
     const handleLogout = (event: React.MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();

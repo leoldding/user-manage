@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -33,17 +34,24 @@ func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Release()
 
-	// retrieve stored password from database
-	var storedPass []byte
-	err = conn.QueryRow(db.Ctx, "SELECT password FROM users WHERE username = $1;", creds.Username).Scan(&storedPass)
+	// retrieve id of user
+	var id []byte
+	err = conn.QueryRow(db.Ctx, "SELECT id FROM users WHERE username = $1;", creds.Username).Scan(&id)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.Printf("User does not exist: %v", err)
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 		} else {
-			log.Printf("Error getting stored password from database: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("Error getting id from database: %v", err)
 		}
+	}
+
+	// retrieve stored password from database
+	var storedPass []byte
+	err = conn.QueryRow(db.Ctx, "SELECT password FROM users WHERE id = $1;", id).Scan(&storedPass)
+	if err != nil {
+		log.Printf("Error getting stored password from database: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -57,7 +65,7 @@ func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 
 	// retrieve role of user
 	var role string
-	err = conn.QueryRow(db.Ctx, "SELECT name FROM roles WHERE id = (SELECT role_id FROM user_roles WHERE user_id = (SELECT id FROM users WHERE username = $1));", creds.Username).Scan(&role)
+	err = conn.QueryRow(db.Ctx, "SELECT name FROM roles WHERE id = (SELECT role_id FROM user_roles WHERE user_id = $1);", id).Scan(&role)
 	if err != nil {
 		log.Printf("Error getting user's role from database: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -66,7 +74,7 @@ func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 
 	// create jwt claims
 	claims := jwt.MapClaims{
-		"user": creds.Username,
+		"id":   id,
 		"role": role,
 	}
 
@@ -107,6 +115,47 @@ func (db *DB) logout(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	})
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func isAuthenticated(w http.ResponseWriter, r *http.Request) {
+	// retrieve jwt
+	cookie, err := r.Cookie("user-jwt")
+	if err != nil {
+		if err == http.ErrNoCookie {
+			log.Printf("Missing JWT: %v", err)
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+		} else {
+			log.Printf("Invalid JWT: %v", err)
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+		}
+		return
+	}
+
+	// parse token
+	token, err := jwt.Parse(cookie.Value, func(token *jwt.Token) (interface{}, error) {
+		_, ok := token.Method.(*jwt.SigningMethodHMAC)
+		if !ok {
+			log.Printf("Incorrect JWT signing method: %v", err)
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return nil, errors.New("Incorrect signing method")
+		}
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+
+	if err != nil {
+		log.Printf("Error parsing JWT: %v", err)
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// invalid token
+	if !token.Valid {
+		log.Printf("Invalid JWT: %v", err)
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
