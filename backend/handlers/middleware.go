@@ -12,8 +12,8 @@ import (
 
 func authenticationMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// check if user is authorized
-		log.Println("Checking if request is authorized.")
+		// check if user is authenticated
+		log.Println("Checking if user is authenticated")
 
 		// retrieve jwt
 		cookie, err := r.Cookie("user-jwt")

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -75,6 +74,7 @@ func (db *DB) login(w http.ResponseWriter, r *http.Request) {
 	// create jwt claims
 	claims := jwt.MapClaims{
 		"id":   id,
+		"user": creds.Username,
 		"role": role,
 	}
 
@@ -115,47 +115,6 @@ func (db *DB) logout(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	})
-
-	w.WriteHeader(http.StatusOK)
-}
-
-func isAuthenticated(w http.ResponseWriter, r *http.Request) {
-	// retrieve jwt
-	cookie, err := r.Cookie("user-jwt")
-	if err != nil {
-		if err == http.ErrNoCookie {
-			log.Printf("Missing JWT: %v", err)
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-		} else {
-			log.Printf("Invalid JWT: %v", err)
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-		}
-		return
-	}
-
-	// parse token
-	token, err := jwt.Parse(cookie.Value, func(token *jwt.Token) (interface{}, error) {
-		_, ok := token.Method.(*jwt.SigningMethodHMAC)
-		if !ok {
-			log.Printf("Incorrect JWT signing method: %v", err)
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-			return nil, errors.New("Incorrect signing method")
-		}
-		return []byte(os.Getenv("JWT_SECRET")), nil
-	})
-
-	if err != nil {
-		log.Printf("Error parsing JWT: %v", err)
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	// invalid token
-	if !token.Valid {
-		log.Printf("Invalid JWT: %v", err)
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
 
 	w.WriteHeader(http.StatusOK)
 }
