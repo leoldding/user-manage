@@ -8,48 +8,9 @@ import (
 	"os"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type DB struct {
-	Pool *pgxpool.Pool
-	Ctx  context.Context
-}
-
-func RegisterHandlers(router *mux.Router, pool *pgxpool.Pool, ctx context.Context) {
-	log.Println("Registering Handlers")
-
-	db := DB{pool, ctx}
-
-	// auth endpoints
-	// login
-	router.HandleFunc("/login", db.login).Methods("POST")
-	// logout
-	router.HandleFunc("/logout", db.logout).Methods("GET")
-	// authenticate
-	router.HandleFunc("/auth", isAuthenticated).Methods("GET")
-
-	// user endpoints
-	// create user
-	router.HandleFunc("/user", db.createUser).Methods("POST")
-	// get user
-	router.Handle("/user", authenticationMiddleware(userAuthorizationMiddleware(http.HandlerFunc(db.getUser)))).Methods("GET")
-	// update user
-	router.Handle("/user", authenticationMiddleware(userAuthorizationMiddleware(http.HandlerFunc(db.updateUser)))).Methods("PUT")
-	// delete user
-	router.Handle("/user", authenticationMiddleware(userAuthorizationMiddleware(http.HandlerFunc(db.deleteUser)))).Methods("DELETE")
-
-	// admin endpoints
-	// get users
-	router.Handle("/users", authenticationMiddleware(adminAuthorizationMiddleware(http.HandlerFunc(db.getAllUsers)))).Methods("GET")
-	// update user
-	router.Handle("/user/{id}", (adminAuthorizationMiddleware(http.HandlerFunc(db.updateUserById)))).Methods("PUT")
-	// delete user
-	router.Handle("/user/{id}", authenticationMiddleware(adminAuthorizationMiddleware(http.HandlerFunc(db.deleteUserById)))).Methods("DELETE")
-}
-
-func authorize(next http.Handler) http.Handler {
+func authenticationMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// check if user is authorized
 		log.Println("Checking if request is authorized.")
@@ -102,5 +63,19 @@ func authorize(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), "userClaims", claims)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func userAuthorizationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Println("USER AUTHORIZATION")
+		next.ServeHTTP(w, r)
+	})
+}
+
+func adminAuthorizationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Println("ADMIN AUTHORIZATION")
+		next.ServeHTTP(w, r)
 	})
 }

@@ -34,7 +34,7 @@ func main() {
 
 	headersOk := gHandlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
 	originsOk := gHandlers.AllowedOrigins([]string{""})
-	methodsOk := gHandlers.AllowedMethods([]string{"GET", "POST", "DELETE", "PATCH"})
+	methodsOk := gHandlers.AllowedMethods([]string{"GET", "POST", "DELETE", "PUT"})
 	credentialsOk := gHandlers.AllowCredentials()
 
 	log.Println("Server is running on port 8080")
