@@ -66,16 +66,21 @@ func authenticationMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func userAuthorizationMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println("USER AUTHORIZATION")
-		next.ServeHTTP(w, r)
-	})
-}
-
 func adminAuthorizationMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println("ADMIN AUTHORIZATION")
+		log.Println("Admin authorization")
+
+		// retrieve claims
+		claims := r.Context().Value("userClaims").(jwt.MapClaims)
+		role := claims["role"]
+
+		// check if claims has admin role
+		if role != "admin" {
+			log.Println("Not an authorized admin")
+			http.Error(w, "Unauthorized admin", http.StatusForbidden)
+			return
+		}
+
 		next.ServeHTTP(w, r)
 	})
 }

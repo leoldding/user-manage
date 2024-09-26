@@ -128,6 +128,8 @@ func (db *DB) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Release()
 
+	// TODO: should separate updating each field, transaction
+
 	// update user values
 	_, err = conn.Exec(db.Ctx, "UPDATE users SET username = $2, password = $3, first_name = $4, last_name = $5 WHERE id = $1;", id, updateUser.Username, updateUser.Password, updateUser.FirstName, updateUser.LastName)
 	if err != nil {

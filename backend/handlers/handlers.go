@@ -31,11 +31,11 @@ func RegisterHandlers(router *mux.Router, pool *pgxpool.Pool, ctx context.Contex
 	// create user
 	router.HandleFunc("/user", db.createUser).Methods("POST")
 	// get user
-	router.Handle("/user", authenticationMiddleware(userAuthorizationMiddleware(http.HandlerFunc(db.getUser)))).Methods("GET")
+	router.Handle("/user", authenticationMiddleware(http.HandlerFunc(db.getUser))).Methods("GET")
 	// update user
-	router.Handle("/user", authenticationMiddleware(userAuthorizationMiddleware(http.HandlerFunc(db.updateUser)))).Methods("PUT")
+	router.Handle("/user", authenticationMiddleware(http.HandlerFunc(db.updateUser))).Methods("PUT")
 	// delete user
-	router.Handle("/user", authenticationMiddleware(userAuthorizationMiddleware(http.HandlerFunc(db.deleteUser)))).Methods("DELETE")
+	router.Handle("/user", authenticationMiddleware(http.HandlerFunc(db.deleteUser))).Methods("DELETE")
 
 	// admin endpoints
 	// get users
